@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>WineGPT Catalog Recommender</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <span class="mark">W</span>
+          <div>
+            <h1>WineGPT</h1>
+            <p data-i18n="subtitle">構造化カタログのワイン推薦アシスタント</p>
+          </div>
+        </div>
+
+        <div class="control">
+          <label for="language" data-i18n="language">言語</label>
+          <select id="language">
+            <option value="zh">中文</option>
+            <option value="en">English</option>
+            <option value="ja" selected>日本語</option>
+          </select>
+        </div>
+
+        <div class="control">
+          <label for="budget" data-i18n="budget">予算上限</label>
+          <input id="budget" type="range" min="1000" max="7000" value="5000" step="100">
+          <output id="budgetValue">¥5,000</output>
+        </div>
+
+        <div class="control">
+          <label data-i18n="wineType">ワインタイプ</label>
+          <div class="segments" id="typeSegments">
+            <button data-type="any" class="active">指定なし</button>
+            <button data-type="red">赤</button>
+            <button data-type="white">白</button>
+            <button data-type="rose">ロゼ</button>
+            <button data-type="sparkling">スパーク</button>
+          </div>
+        </div>
+
+        <label class="check">
+          <input id="beginner" type="checkbox">
+          <span data-i18n="beginner">初心者向けを優先</span>
+        </label>
+        <label class="check">
+          <input id="onlyWine" type="checkbox" checked>
+          <span data-i18n="onlyWine">ワインのみ</span>
+        </label>
+
+        <div class="status">
+          <strong id="catalogCount">0</strong>
+          <span data-i18n="catalogLoaded">件の商品を読み込み済み</span>
+        </div>
+      </aside>
+
+      <section class="workspace">
+        <div class="chatPanel">
+          <div class="messages" id="messages"></div>
+          <form class="composer" id="recommendForm">
+            <textarea id="requestText" rows="3" data-i18n-placeholder="placeholder" placeholder="例：今夜は照り焼きチキン。渋すぎず初心者にも飲みやすい赤ワインを5,000円以内で。"></textarea>
+            <button type="submit" data-i18n="recommend">推薦</button>
+          </form>
+        </div>
+
+        <section class="results">
+          <div class="resultHeader">
+            <h2 data-i18n="ranking">推薦結果</h2>
+            <span id="modelBadge" data-mode="ai">Rules + AI</span>
+          </div>
+          <div id="cards" class="cards"></div>
+        </section>
+      </section>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>
