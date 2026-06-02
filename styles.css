@@ -71,7 +71,6 @@ h1 {
   line-height: 1.1;
 }
 
-.brand p,
 .status,
 .control label,
 .check,
@@ -281,11 +280,6 @@ h2 {
   font-size: 20px;
 }
 
-#modelBadge {
-  color: var(--muted);
-  font-size: 13px;
-}
-
 .cards {
   display: grid;
   gap: 14px;
@@ -347,6 +341,13 @@ h2 {
   gap: 4px;
   margin-top: 8px;
   font-size: 12px;
+}
+
+.recommendReason {
+  margin-top: 10px;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.55;
 }
 
 .buy {

@@ -8,7 +8,6 @@ const state = {
 
 const i18n = {
   zh: {
-    subtitle: "结构化商品库推荐助手",
     language: "语言",
     budget: "预算上限",
     wineType: "酒款类型",
@@ -18,18 +17,16 @@ const i18n = {
     placeholder: "例如：今晚吃照烧鸡，想要一瓶不太涩、适合新手的红酒，预算 5000 日元以内。",
     recommend: "推荐",
     ranking: "推荐结果",
-    hello: "告诉我用餐、预算、颜色偏好、是否送礼或是否适合新手。我只会从当前 CSV 商品池里选酒。",
+    hello: "告诉我用餐、预算、颜色偏好、是否送礼或是否适合新手。",
     fallback: "本地规则已完成排序；未配置 AI API Key 时，会显示规则解释。",
     buy: "购买链接",
     score: "规则分",
+    reason: "推荐理由",
     reasons: "命中规则",
     noResult: "没有找到符合条件的商品。可以放宽预算或类型限制。",
-    loading: "AI 正在思考推荐理由...",
-    badgeAi: "Rules + AI",
-    badgeRules: "Rules only"
+    loading: "AI 正在选择推荐..."
   },
   en: {
-    subtitle: "Structured catalog wine assistant",
     language: "Language",
     budget: "Budget cap",
     wineType: "Wine type",
@@ -39,18 +36,16 @@ const i18n = {
     placeholder: "Example: Dinner is teriyaki chicken. I want a gentle red wine for beginners under 5,000 JPY.",
     recommend: "Recommend",
     ranking: "Recommendations",
-    hello: "Tell me the meal, budget, color preference, gift context, or beginner needs. I will only choose from the CSV product pool.",
+    hello: "Tell me the meal, budget, color preference, gift context, or beginner needs.",
     fallback: "Local rules ranked the wines. Without an AI API key, the app shows a rule-based explanation.",
     buy: "Buy",
     score: "Rule score",
+    reason: "Reason",
     reasons: "Matched rules",
     noResult: "No matching product found. Try relaxing the budget or type filter.",
-    loading: "AI is thinking through the recommendation...",
-    badgeAi: "Rules + AI",
-    badgeRules: "Rules only"
+    loading: "AI is choosing recommendations..."
   },
   ja: {
-    subtitle: "構造化カタログのワイン推薦アシスタント",
     language: "言語",
     budget: "予算上限",
     wineType: "ワインタイプ",
@@ -60,15 +55,14 @@ const i18n = {
     placeholder: "例：今夜は照り焼きチキン。渋すぎず初心者にも飲みやすい赤ワインを5,000円以内で。",
     recommend: "推薦",
     ranking: "推薦結果",
-    hello: "料理、予算、色の好み、ギフト用途、初心者向けかどうかを入力してください。現在のCSV商品リストからだけ選びます。",
+    hello: "料理、予算、色の好み、ギフト用途、初心者向けかどうかを入力してください。",
     fallback: "ローカルルールで順位付けしました。AI API Key が未設定の場合はルール説明を表示します。",
     buy: "購入リンク",
     score: "ルール点",
+    reason: "推薦理由",
     reasons: "一致ルール",
     noResult: "条件に合う商品が見つかりません。予算やタイプ条件を緩めてください。",
-    loading: "AI が推薦理由を考えています...",
-    badgeAi: "Rules + AI",
-    badgeRules: "Rules only"
+    loading: "AI が推薦を選んでいます..."
   }
 };
 
@@ -117,12 +111,6 @@ function setLanguage(lang) {
   document.querySelectorAll("#typeSegments button").forEach(button => {
     button.textContent = typeLabels[state.language][button.dataset.type];
   });
-  const badge = document.querySelector("#modelBadge");
-  if (badge.dataset.mode === "rules") {
-    badge.textContent = t("badgeRules");
-  } else {
-    badge.textContent = t("badgeAi");
-  }
   if (!document.querySelector(".message")) {
     addMessage(t("hello"), "assistant");
   }
@@ -171,6 +159,24 @@ function typeMatches(product, requested) {
   if (requested === "rose") return type.includes("rose") || type.includes("rosé") || type.includes("ロゼ");
   if (requested === "sparkling") return type.includes("sparkling") || type.includes("スパーク");
   return type.includes(requested) || (requested === "red" && type.includes("赤")) || (requested === "white" && type.includes("白"));
+}
+
+function getCandidateProducts() {
+  const budget = Number(document.querySelector("#budget").value);
+  const onlyWine = document.querySelector("#onlyWine").checked;
+
+  return state.products.filter(product => {
+    if (onlyWine && product.isWine !== "yes") {
+      return false;
+    }
+    if (Number(product.price) > budget) {
+      return false;
+    }
+    if (state.type !== "any" && !typeMatches(product, state.type)) {
+      return false;
+    }
+    return true;
+  });
 }
 
 function scoreProduct(product, signals) {
@@ -249,12 +255,12 @@ function localExplanation(top) {
   const name = top?.name || "";
   const reasonText = top?.reasons?.length ? top.reasons.join(" / ") : t("reasons");
   if (state.language === "en") {
-    return `${name} is the best catalog-grounded match because it scored highest on ${reasonText}. The alternates are kept visible for comparison, but the top bottle has the strongest fit against the stated constraints.`;
+    return `${name} scored highest on ${reasonText}. The alternates are kept visible for comparison, but the top bottle has the strongest fit against the stated constraints.`;
   }
   if (state.language === "ja") {
     return `${name} は「${reasonText}」の条件で最も高いルール点になったため第一候補です。他の候補も比較用に表示していますが、入力条件との一致度はこの商品が最も高いです。`;
   }
-  return `${name} 是当前商品池里规则分最高的选择，主要命中：${reasonText}。下面也保留了备选酒，便于比较；推荐范围严格限制在已有 CSV 商品池内。`;
+  return `${name} 是规则分最高的选择，主要命中：${reasonText}。下面也保留了备选酒，便于比较。`;
 }
 
 function addMessage(text, role, options = {}) {
@@ -284,6 +290,15 @@ function cardReason(product) {
   return base.length > 170 ? `${base.slice(0, 170)}...` : base;
 }
 
+function escapeHtml(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 function renderCards(items) {
   const cards = document.querySelector("#cards");
   cards.innerHTML = "";
@@ -291,22 +306,50 @@ function renderCards(items) {
     const card = document.createElement("article");
     card.className = `card ${index === 0 ? "top" : ""}`;
     const tags = [product.type, product.grapes, product.occasions].filter(Boolean).join("; ").split(";").map(x => x.trim()).filter(Boolean).slice(0, 5);
+    const hasScore = Number.isFinite(Number(product.score));
+    const details = product.recommendationReason
+      ? `<p class="recommendReason"><strong>${t("reason")}:</strong> ${escapeHtml(product.recommendationReason)}</p>`
+      : `<div class="scoreRows">
+          ${[
+            hasScore ? `<span>${t("score")}: ${Math.round(product.score)}</span>` : "",
+            `<span>${t("reasons")}: ${escapeHtml(product.reasons?.join(" / ") || "-")}</span>`
+          ].filter(Boolean).join("")}
+        </div>`;
     card.innerHTML = `
-      <img class="photo" src="${resolveImage(product)}" alt="${product.name}">
+      <img class="photo" src="${escapeHtml(resolveImage(product))}" alt="${escapeHtml(product.name)}">
       <div>
-        <h3>${index + 1}. ${product.name}</h3>
-        <div class="meta">${yen(product.price)} / ${product.vintage || ""} / ${product.stock}</div>
-        <div class="tags">${tags.map(tag => `<span class="tag">${tag}</span>`).join("")}</div>
-        <p class="why">${cardReason(product)}</p>
-        <div class="scoreRows">
-          <span>${t("score")}: ${Math.round(product.score)}</span>
-          <span>${t("reasons")}: ${product.reasons.join(" / ") || "-"}</span>
-        </div>
-        <a class="buy" href="${product.url}" target="_blank" rel="noopener">${t("buy")}</a>
+        <h3>${index + 1}. ${escapeHtml(product.name)}</h3>
+        <div class="meta">${yen(product.price)} / ${escapeHtml(product.vintage || "")} / ${escapeHtml(product.stock)}</div>
+        <div class="tags">${tags.map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}</div>
+        <p class="why">${escapeHtml(cardReason(product))}</p>
+        ${details}
+        <a class="buy" href="${escapeHtml(product.url)}" target="_blank" rel="noopener">${t("buy")}</a>
       </div>
     `;
     cards.appendChild(card);
   });
+}
+
+function toRecommendationCandidate(product) {
+  return {
+    id: product.id,
+    name: product.name,
+    type: product.type,
+    vintage: product.vintage,
+    price: product.price,
+    stock: product.stock,
+    grapes: product.grapes,
+    sweetness: product.sweetness,
+    acidity: product.acidity,
+    tannin: product.tannin,
+    body: product.body,
+    flavors: product.flavors,
+    pairings: product.pairings,
+    occasions: product.occasions,
+    beginner: product.beginner,
+    description: product.description,
+    aiNotes: product.aiNotes
+  };
 }
 
 function replaceThinkingMessage(node, text) {
@@ -323,58 +366,65 @@ async function recommend(event) {
   const thinkingMessage = addMessage(t("loading"), "assistant", { thinking: true });
 
   const signals = parseSignals(userText);
-  const onlyWine = document.querySelector("#onlyWine").checked;
-  const ranked = state.products
-    .filter(product => !onlyWine || product.isWine === "yes")
+  const candidates = getCandidateProducts();
+  const localRanked = candidates
     .map(product => scoreProduct(product, signals))
     .filter(product => product.score > -20)
     .sort((a, b) => b.score - a.score || Number(a.price) - Number(b.price))
-    .slice(0, 5);
+    .slice(0, 3);
+  const fallbackRanked = localRanked.length
+    ? localRanked
+    : candidates
+      .map(product => scoreProduct(product, signals))
+      .sort((a, b) => b.score - a.score || Number(a.price) - Number(b.price))
+      .slice(0, 3);
 
-  if (!ranked.length) {
+  if (!candidates.length) {
     replaceThinkingMessage(thinkingMessage, t("noResult"));
     renderCards([]);
     return;
   }
 
-  renderCards(ranked);
-
-  const fallbackExplanation = localExplanation(ranked[0]);
+  const fallbackExplanation = localExplanation(fallbackRanked[0] || candidates[0]);
   try {
-    const response = await fetch("/api/explain", {
+    const response = await fetch("/api/recommend", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         language: state.language,
         userText,
         signals,
+        filters: {
+          budget: Number(document.querySelector("#budget").value),
+          wineType: state.type,
+          onlyWine: document.querySelector("#onlyWine").checked
+        },
         fallbackExplanation,
-        candidates: ranked.map(product => ({
-          id: product.id,
-          name: product.name,
-          type: product.type,
-          price: product.price,
-          grapes: product.grapes,
-          body: product.body,
-          acidity: product.acidity,
-          tannin: product.tannin,
-          flavors: product.flavors,
-          pairings: product.pairings,
-          score: product.score,
-          reasons: product.reasons
-        }))
+        fallbackIds: fallbackRanked.map(product => product.id),
+        candidates: candidates.map(toRecommendationCandidate)
       })
     });
+
+    if (!response.ok) {
+      throw new Error("AI recommendation request failed");
+    }
+
     const data = await response.json();
+    const productsById = new Map(candidates.map(product => [String(product.id), product]));
+    const reasonById = new Map((data.recommendations || []).map(item => [String(item.id), item.reason || ""]));
+    const aiRanked = (data.recommendations || [])
+      .map(item => productsById.get(String(item.id)))
+      .filter(Boolean)
+      .map(product => ({
+        ...product,
+        recommendationReason: reasonById.get(String(product.id))
+      }));
+
+    renderCards(data.provider === "fallback" || !aiRanked.length ? fallbackRanked : aiRanked.slice(0, 3));
     replaceThinkingMessage(thinkingMessage, data.explanation || fallbackExplanation);
-    const badge = document.querySelector("#modelBadge");
-    badge.dataset.mode = data.provider === "fallback" ? "rules" : "ai";
-    badge.textContent = data.provider === "fallback" ? t("badgeRules") : t("badgeAi");
   } catch {
+    renderCards(fallbackRanked);
     replaceThinkingMessage(thinkingMessage, fallbackExplanation);
-    const badge = document.querySelector("#modelBadge");
-    badge.dataset.mode = "rules";
-    badge.textContent = t("badgeRules");
   }
 }
 
