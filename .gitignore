@@ -6,6 +6,8 @@ pnpm-debug.log*
 
 .env
 .env.*
+.sshkey
+.ssh
 !.env.example
 
 server*.log

@@ -7,73 +7,156 @@
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
-    <main class="app">
+    <main id="app" class="app" v-cloak>
       <aside class="sidebar">
         <div class="brand">
-          <span class="mark">W</span>
-          <div>
-            <h1>WineGPT</h1>
+          <div class="brandIdentity">
+            <span class="mark">W</span>
+            <div>
+              <h1>WineGPT</h1>
+            </div>
           </div>
-        </div>
-
-        <div class="control">
-          <label for="language" data-i18n="language">言語</label>
-          <select id="language">
+          <select id="language" class="languageSelect" v-model="language" :aria-label="t('language')">
             <option value="zh">中文</option>
             <option value="en">English</option>
-            <option value="ja" selected>日本語</option>
+            <option value="ja">日本語</option>
           </select>
         </div>
 
         <div class="control">
-          <label for="budget" data-i18n="budget">予算上限</label>
-          <input id="budget" type="range" min="1000" max="7000" value="5000" step="100">
-          <output id="budgetValue">¥5,000</output>
-        </div>
-
-        <div class="control">
-          <label data-i18n="wineType">ワインタイプ</label>
+          <label>{{ t("wineType") }}</label>
           <div class="segments" id="typeSegments">
-            <button data-type="any" class="active">指定なし</button>
-            <button data-type="red">赤</button>
-            <button data-type="white">白</button>
-            <button data-type="rose">ロゼ</button>
-            <button data-type="sparkling">スパーク</button>
+            <button
+              v-for="wineType in wineTypes"
+              :key="wineType"
+              type="button"
+              :class="{ active: type === wineType }"
+              @click="type = wineType"
+            >
+              {{ typeLabelsForCurrentLanguage[wineType] }}
+            </button>
           </div>
         </div>
 
         <label class="check">
-          <input id="beginner" type="checkbox">
-          <span data-i18n="beginner">初心者向けを優先</span>
+          <input id="beginner" type="checkbox" v-model="beginner">
+          <span>{{ t("beginner") }}</span>
         </label>
         <label class="check">
-          <input id="onlyWine" type="checkbox" checked>
-          <span data-i18n="onlyWine">ワインのみ</span>
+          <input id="onlyWine" type="checkbox" v-model="onlyWine">
+          <span>{{ t("onlyWine") }}</span>
         </label>
 
         <div class="status">
-          <strong id="catalogCount">0</strong>
-          <span data-i18n="catalogLoaded">件の商品を読み込み済み</span>
+          <strong id="catalogCount">{{ products.length }}</strong>
+          <span>{{ t("catalogLoaded") }}</span>
         </div>
       </aside>
 
       <section class="workspace">
         <div class="chatPanel">
-          <div class="messages" id="messages"></div>
-          <form class="composer" id="recommendForm">
-            <textarea id="requestText" rows="3" data-i18n-placeholder="placeholder" placeholder="例：今夜は照り焼きチキン。渋すぎず初心者にも飲みやすい赤ワインを5,000円以内で。"></textarea>
-            <button type="submit" data-i18n="recommend">推薦</button>
+          <div class="messages" id="messages" ref="messages">
+            <div
+              v-for="message in messages"
+              :key="message.id"
+              :class="['message', message.role, { thinking: message.thinking }]"
+            >
+              <template v-if="message.thinking">
+                <span class="thinkingText">{{ messageText(message) }}</span>
+                <span class="thinkingDots" aria-hidden="true">
+                  <span></span><span></span><span></span>
+                </span>
+              </template>
+              <template v-else>
+                {{ messageText(message) }}
+              </template>
+            </div>
+          </div>
+          <form class="composer" id="recommendForm" @submit.prevent="recommend">
+            <div class="quickGroups">
+              <div class="quickGroup">
+                <span class="quickLabel">{{ t("flavorShortcuts") }}</span>
+                <div class="quickChips">
+                  <button
+                    v-for="shortcut in flavorShortcuts"
+                    :key="shortcut.id"
+                    type="button"
+                    class="quickChip"
+                    :class="{ selected: hasShortcut(shortcut) }"
+                    :aria-pressed="hasShortcut(shortcut)"
+                    :disabled="loading"
+                    @click="applyShortcut(shortcut)"
+                  >
+                    <span class="quickIcon" aria-hidden="true">{{ shortcut.emoji }}</span>
+                    <span class="quickText">{{ shortcutLabel(shortcut) }}</span>
+                  </button>
+                </div>
+              </div>
+              <div class="quickGroup">
+                <span class="quickLabel">{{ t("foodShortcuts") }}</span>
+                <div class="quickChips">
+                  <button
+                    v-for="shortcut in foodShortcuts"
+                    :key="shortcut.id"
+                    type="button"
+                    class="quickChip"
+                    :class="{ selected: hasShortcut(shortcut) }"
+                    :aria-pressed="hasShortcut(shortcut)"
+                    :disabled="loading"
+                    @click="applyShortcut(shortcut)"
+                  >
+                    <span class="quickIcon" aria-hidden="true">{{ shortcut.emoji }}</span>
+                    <span class="quickText">{{ shortcutLabel(shortcut) }}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <textarea
+              id="requestText"
+              ref="requestText"
+              rows="3"
+              v-model="requestText"
+              :placeholder="t('placeholder')"
+            ></textarea>
+            <button class="sendButton" type="submit" :disabled="loading || !requestText.trim()">
+              {{ loading ? t("loading") : t("recommend") }}
+            </button>
           </form>
         </div>
 
         <section class="results">
           <div class="resultHeader">
-            <h2 data-i18n="ranking">推薦結果</h2>
+            <h2>{{ t("ranking") }}</h2>
           </div>
-          <div id="cards" class="cards"></div>
+          <transition-group id="cards" class="cards" name="cardList" tag="div" aria-live="polite">
+            <article
+              v-for="(product, index) in results"
+              :key="product.id"
+              :class="['card', { top: index === 0 }]"
+            >
+              <img class="photo" :src="resolveImage(product)" :alt="product.name" loading="lazy">
+              <div class="cardBody">
+                <h3>{{ index + 1 }}. {{ product.name }}</h3>
+                <div class="meta">{{ yen(product.price) }} / {{ product.vintage || "" }} / {{ product.stock }}</div>
+                <div class="tags">
+                  <span v-for="tag in productTags(product)" :key="tag" class="tag">{{ tag }}</span>
+                </div>
+                <p class="why">{{ cardReason(product) }}</p>
+                <p v-if="product.recommendationReason" class="recommendReason">
+                  <strong>{{ t("reason") }}:</strong> {{ product.recommendationReason }}
+                </p>
+                <div v-else class="scoreRows">
+                  <span v-if="Number.isFinite(Number(product.score))">{{ t("score") }}: {{ Math.round(product.score) }}</span>
+                  <span>{{ t("reasons") }}: {{ product.reasons?.join(" / ") || "-" }}</span>
+                </div>
+                <a class="buy" :href="product.url" target="_blank" rel="noopener">{{ t("buy") }}</a>
+              </div>
+            </article>
+          </transition-group>
         </section>
       </section>
     </main>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
